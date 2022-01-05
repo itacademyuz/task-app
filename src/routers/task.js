@@ -43,10 +43,13 @@ taskRouter.patch('/tasks/:id', async(req, res)=>{
         return res.status(400).send({error: 'Invalid Updates'})
     }
     try {
-        const updatedTask = await Task.findByIdAndUpdate(taskID, UpdateParams, {new: true, runValidators: true})
+        const updatedTask = await Task.findById(taskID)
+        
         if(!updatedTask){
             return res.status(404).send('BAD REQUEST || NO TASK FOUND TO UPDATE')
         }
+        updates.forEach(update => updatedTask[update] = UpdateParams[update]);
+        await updatedTask.save()
         res.send(updatedTask)
     } catch (error) {
         res.status(400).send(error)

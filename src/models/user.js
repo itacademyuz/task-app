@@ -1,7 +1,8 @@
+const bcrypt = require('bcryptjs')
 const mongoose = require('mongoose')
 const validator = require('validator')
-
-const User = mongoose.model('User', {
+const jwt = require('jsonwebtoken')
+const userSchema = mongoose.Schema({
     name: {
         type: String,
         required: true,
@@ -9,6 +10,7 @@ const User = mongoose.model('User', {
     },
     email: {
         type: String,
+        unique: true,
         required: true,
         trim: true,
         lowercase: true,
@@ -37,8 +39,43 @@ const User = mongoose.model('User', {
                 throw new Error('Age must be greater than 18')
             }
         }
-    }
+    },
+    tokens: [{
+        token: {
+            type: String,
+            required: true
+        }
+    }]
 })
 
+userSchema.methods.generateAuthToken = async function(){
+    const user = this
+    const token = jwt.sign({_id: user._id.toString()}, 'asecretkey')
+    user.tokens = user.tokens.concat({token})
+    await user.save()
+    return token
+}
+userSchema.statics.findByCredentials = async (credentials)=>{
+    const user = await User.findOne({email: credentials.email})
+    if(!user){
+        throw new Error('UNABLE TO LOG IN || NO USER FOUND BASED ON INFORMATION GIVEN')
+    }
+    const isMatch = await bcrypt.compare(credentials.password, user.password)
+    if(!isMatch){
+        throw new Error('UNABLE TO LOG IN || WRONG PASSWORD')
+    }
+    return user
+}
 
+userSchema.pre('save', async function (next) {
+    const user = this
+    
+    if(user.isModified('password')){
+        user.password = await bcrypt.hash(user.password, 8)
+    }
+
+    next()
+})
+
+const User = mongoose.model('User', userSchema)
 module.exports = {User}
