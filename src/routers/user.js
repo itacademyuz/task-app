@@ -5,7 +5,6 @@ const {auth} = require('../middleware/auth')
 
 userRouter.post('/users', async(req, res)=>{
     const userData = req.body
-    console.log(userData);
      const user = new User(userData)
     try {
         const token = await user.generateAuthToken()
@@ -50,23 +49,17 @@ userRouter.post('/users/terminateAll', auth, async(req, res)=>{
 })
 
 userRouter.get('/users/me', auth, async (req, res)=>{
-    res.send(req.user)
-})
-
-userRouter.get('/users/:id', async (req, res)=>{
-    const userID = req.params.id
+    const user = req.user
     try {
-        const user = await User.findById(userID)
-        if(!user){
-            return res.status(404).send('Bad request || User Not Found')
-        }
-        res.send(user)
-    } catch (error) {
-        res.status(500).send(error)
+        const profile =await User.findById(user._id).lean({virtuals: true}).populate('tasks')
+        res.send(profile)
+    } catch (e) {
+        console.log(e);
     }
 })
-userRouter.patch('/users/:id', async(req, res)=>{
-    const userID = req.params.id
+
+
+userRouter.patch('/users/me', auth, async(req, res)=>{
     const UpdateParams = req.body
     const updates = Object.keys(UpdateParams)
     const allowedUpdates = ["name", "email", "password", "age"]
@@ -75,12 +68,8 @@ userRouter.patch('/users/:id', async(req, res)=>{
         return res.status(400).send({error: 'Invalid Updates!'})
     }
     try {
-        const user = await User.findById(userID)
-        if(!user){
-            return res.status(404).send('BAD REQUEST || NO USER FOUND TO UPDATE')
-        }
+        const user = req.user
         updates.forEach(update => user[update] = UpdateParams[update]);
-        //const updatedUser = await User.findByIdAndUpdate(userID, UpdateParams, {new: true, runValidators:true})
         await user.save()
         
         res.send(user)
@@ -89,16 +78,13 @@ userRouter.patch('/users/:id', async(req, res)=>{
     }
 })
 
-userRouter.delete('/users/:id', async (req, res)=>{
-    const userID = req.params.id
+userRouter.delete('/users/me', auth, async (req, res)=>{
+    const user = req.user
     try {
-        const deletedUser = await User.findByIdAndDelete(userID)
-        if(!deletedUser){
-            return res.status(404).send('BAD REQUEST || NO USER FOUND TO DELETE')
-        }
-        res.status(201).send(`${deletedUser.name} has been deleted`)
+        await user.remove()
+        res.status(201).send(`${req.user.name} has been deleted`)
     } catch (error) {
-        res.status(400).send(err)
+        res.status(400).send(error)
     }
 })
 
