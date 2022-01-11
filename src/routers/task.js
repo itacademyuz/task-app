@@ -16,8 +16,27 @@ taskRouter.post('/tasks', auth, async(req, res)=>{
     }
 })
 taskRouter.get('/tasks', auth, async(req, res)=>{
+    const completed = req.query.completed
+    const filter = {
+        owner: req.user._id
+    }
+    const paginate = {
+        skip: parseInt(req.query.skip),
+        limit: parseInt(req.query.limit)
+    }
+    const sort = {
+        
+    }
+    if(req.query.sortBy){
+        const parts = req.query.sortBy.split(':')
+        sort[parts[0]] = parts[1] === 'desc'? -1 : 1
+    }
+    if(completed){
+        filter.completed = completed==='true'
+    }
     try {
-        const taskList = await Task.find({owner:req.user._id})
+        const taskList = await Task.find(filter, {}, paginate).sort(sort)
+        //console.log(filter.completed);
         res.status(201).send(taskList)
     } catch (error) {
         res.status(401).send(error);

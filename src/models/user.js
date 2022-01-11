@@ -5,7 +5,8 @@ const jwt = require('jsonwebtoken')
 const mongooseLeanVirtuals = require('mongoose-lean-virtuals')
 const { Task } = require('./task')
 const opts = {
-    toJSON:{virtuals:true}
+    toJSON:{virtuals:true},
+    timestamps: true
 }
 const userSchema = mongoose.Schema({
     name: {
