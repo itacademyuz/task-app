@@ -1,8 +1,21 @@
 const express = require('express')
 const userRouter = new express.Router()
+const sharp = require('sharp')
 const {User} = require('../models/user')
 const {auth} = require('../middleware/auth')
+const multer = require('multer')
 
+const upload = multer({
+    limits: {
+        fileSize: 3000000
+    },
+    fileFilter(req, file, cb) {
+        if(!file.originalname.match(/\.(jpg|png|jpeg)$/)){
+            return cb(new Error('Fucking wrong format | Need an image'))
+        }
+        cb(undefined, true)
+    }
+})
 userRouter.post('/users', async(req, res)=>{
     const userData = req.body
      const user = new User(userData)
@@ -88,4 +101,56 @@ userRouter.delete('/users/me', auth, async (req, res)=>{
     }
 })
 
+userRouter.post('/users/me/avatar', auth, upload.single('avatar'), async(req, res)=>{
+    const user = req.user
+    const avatar = req.file.buffer
+    try {
+        const buffer = await sharp(avatar).resize({width: 250, height:250}).png().toBuffer()
+        user.avatar = buffer
+        await user.save()
+        res.send('Picture uploaded')
+    } catch (e) {
+        console.log(e);
+        res.status(403).send(e)
+    }
+},(error, req, res, next)=>{
+    res.status(403).send({error: error.message})
+})
+
+userRouter.delete('/users/me/avatar', auth, async(req, res)=>{
+    const user = req.user
+    user.avatar = undefined
+    try {
+        await user.save()
+        res.status(200).send('Your avatar deleted. Sad work...')
+    } catch (e) {
+        console.log(e);
+    }
+})
+userRouter.get('/users/me/avatar', auth, async(req, res)=>{
+    const user = req.user
+    try {
+        if(!user.avatar){
+            throw new Error(`You have no fucking avatar nigga`)
+        }
+        res.set('Content-type', 'image/png')
+        res.send(user.avatar)
+    } catch (e) {
+        res.status(404).send(`You have no fucking avatar nigga`)
+    }
+})
+
+userRouter.get('/users/:id/avatar', async(req, res)=>{
+    const userID = req.params.id
+    try {
+        const user = await User.findById(userID)
+        if(!user.avatar){
+            throw new Error(`You have no fucking avatar nigga`)
+        }
+        res.set('Content-type', 'image/jpg')
+        res.send(user.avatar)
+    } catch (e) {
+        res.status(404).send(`You have no fucking avatar nigga`)
+    }
+})
 module.exports = {userRouter}
