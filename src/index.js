@@ -10,5 +10,3 @@ app.use(taskRouter)
 app.listen(PORT, ()=>{
     console.log(`Server is app and running at port ${PORT}`);
 })
-
-
